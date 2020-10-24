@@ -6,25 +6,84 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+## preparation work
+setwd("~/Desktop/R/datasciencecoursera/testdir")
 knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+
+#load files
+pml <- read.csv("pml-training.csv")
+pml_testing <- read.csv("pml-testing.csv")
+
+#convert variable classe to factor
+pml$classe <- as.factor(pml$classe )
+
+names(pml)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## data cleaning process
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### I first remove variables that contains NA values. I also remove the first seven variables (user names, row numbers, etc) because they has nothing to do with the outcome.Lastly, I remove variables that large have empty inputs. By the end of the data cleanning process, the dataset has 53 variables. 
 
-```{r cars}
-summary(cars)
+```{r echo=FALSE}
+pml<- pml[, colSums(is.na(pml)) == 0]
+names(pml)
+# remove first 7 colums because it has nothing to do with the outcome
+pml = subset(pml, select = -c(1:7) )
+# remove coloums that have lot of empty inputs
+pml = subset(pml, select = -c(5:13) )
+pml = subset(pml, select = -c(27:32) )
+pml = subset(pml, select = -c(30:38) )
+pml = subset(pml, select = -c(43:51) )
+
+dim(pml)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+## Building training and testing dataset
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+### I creat a training dataset and a testing dataset using a 70/30 split. 
+```{r echo=FALSE}
+
+set.seed(343434)
+
+inTrain <- createDataPartition(y = pml$classe,
+                               p = 0.7, list = F)
+
+training <- pml[inTrain,]
+testing <- pml[-inTrain,]
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Predict model
+
+### I use random forest method because this random forest is versatile. I also set ntree to 250 in order to save the computational power. 
+
+### The accuracy of the model is 0.9969, meaning that the out of sample error is 0.0031. 
+
+```{r echo=FALSE}
+
+model_rf <- train(classe ~ ., method="rf",ntree=250, data=training)  
+
+model_predict <- predict(model_rf, testing)
+
+confusionMatrix(model_predict, testing$classe)
+```
+
+### Lastly, I use the model to predict the 20 different test cases.
+
+```{r echo=FALSE}
+model_predict2 <- predict(model_rf, pml_testing)
+
+model_predict2
+
+```
+
+
+
